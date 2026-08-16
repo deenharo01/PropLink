@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import "./index.css";
 
 const properties = [
@@ -6,491 +6,492 @@ const properties = [
     id: 1,
     title: "Modern 2 Bedroom Home",
     location: "Harare",
-    area: "Avondale",
-    type: "House",
-    listingType: "Rent",
     price: 500,
+    type: "House",
     bedrooms: 2,
-    bathrooms: 1,
-    image: "https://picsum.photos/seed/proplink-harare/900/600",
-    verified: true,
-    description:
-      "A modern and comfortable two-bedroom home in a convenient Harare location.",
-    amenities: ["Parking", "Security", "Water", "Fitted Kitchen"],
+    image: "https://picsum.photos/seed/hararehouse/800/600",
   },
   {
     id: 2,
     title: "Spacious Family House",
     location: "Bulawayo",
-    area: "Hillside",
-    type: "House",
-    listingType: "Rent",
     price: 650,
+    type: "House",
     bedrooms: 3,
-    bathrooms: 2,
-    image: "https://picsum.photos/seed/proplink-bulawayo/900/600",
-    verified: true,
-    description:
-      "Spacious family accommodation with comfortable living areas and a secure yard.",
-    amenities: ["Parking", "Garden", "Security", "Water"],
+    image: "https://picsum.photos/seed/bulawayohouse/800/600",
   },
   {
     id: 3,
     title: "Student Accommodation",
     location: "Gweru",
-    area: "CBD",
-    type: "Room",
-    listingType: "Rent",
     price: 200,
+    type: "Room",
     bedrooms: 1,
-    bathrooms: 1,
-    image: "https://picsum.photos/seed/proplink-gweru/900/600",
-    verified: false,
-    description:
-      "Affordable student accommodation close to major colleges and transport routes.",
-    amenities: ["Wi-Fi", "Water", "Electricity", "Security"],
+    image: "https://picsum.photos/seed/gweruroom/800/600",
   },
   {
     id: 4,
     title: "Furnished Apartment",
     location: "Mutare",
-    area: "Avenues",
-    type: "Apartment",
-    listingType: "Rent",
     price: 800,
+    type: "Apartment",
     bedrooms: 2,
-    bathrooms: 2,
-    image: "https://picsum.photos/seed/proplink-mutare/900/600",
-    verified: true,
-    description:
-      "Fully furnished apartment suitable for professionals, couples or small families.",
-    amenities: ["Furnished", "Parking", "Security", "Wi-Fi"],
+    image: "https://picsum.photos/seed/mutareapartment/800/600",
   },
   {
     id: 5,
-    title: "Executive 4 Bedroom Home",
+    title: "Affordable 3 Bedroom House",
     location: "Harare",
-    area: "Borrowdale",
+    price: 700,
     type: "House",
-    listingType: "Buy",
-    price: 145000,
-    bedrooms: 4,
-    bathrooms: 3,
-    image: "https://picsum.photos/seed/proplink-borrowdale/900/600",
-    verified: true,
-    description:
-      "An executive family property in one of Harare's sought-after residential areas.",
-    amenities: ["Garage", "Garden", "Borehole", "Security"],
+    bedrooms: 3,
+    image: "https://picsum.photos/seed/house5/800/600",
   },
   {
     id: 6,
-    title: "2 Bedroom Flat",
+    title: "Bachelor Apartment",
     location: "Bulawayo",
-    area: "CBD",
+    price: 300,
     type: "Apartment",
-    listingType: "Buy",
-    price: 65000,
-    bedrooms: 2,
-    bathrooms: 1,
-    image: "https://picsum.photos/seed/proplink-flat/900/600",
-    verified: false,
-    description:
-      "Convenient two-bedroom apartment close to shops, transport and city amenities.",
-    amenities: ["Parking", "Security", "Water"],
+    bedrooms: 1,
+    image: "https://picsum.photos/seed/apartment6/800/600",
   },
 ];
 
-const cities = ["All locations", "Harare", "Bulawayo", "Gweru", "Mutare"];
-
-function formatPrice(price, listingType) {
-  return listingType === "Rent"
-    ? `$${price.toLocaleString()}/month`
-    : `$${price.toLocaleString()}`;
-}
-
 function App() {
   const [search, setSearch] = useState("");
-  const [listingType, setListingType] = useState("All");
   const [location, setLocation] = useState("All locations");
-  const [propertyType, setPropertyType] = useState("All");
-  const [bedrooms, setBedrooms] = useState("Any");
+  const [propertyType, setPropertyType] = useState("All types");
   const [maxPrice, setMaxPrice] = useState("");
+  const [showListing, setShowListing] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
-  const [showListingForm, setShowListingForm] = useState(false);
-  const [favorites, setFavorites] = useState([]);
-  const [mobileMenu, setMobileMenu] = useState(false);
 
-  const filteredProperties = useMemo(() => {
-    return properties.filter((property) => {
-      const searchable =
-        `${property.title} ${property.location} ${property.area} ${property.type}`
-          .toLowerCase();
+  const filteredProperties = properties.filter((property) => {
+    const matchesSearch =
+      property.title.toLowerCase().includes(search.toLowerCase()) ||
+      property.location.toLowerCase().includes(search.toLowerCase());
 
-      const matchesSearch =
-        !search || searchable.includes(search.toLowerCase());
+    const matchesLocation =
+      location === "All locations" ||
+      property.location === location;
 
-      const matchesListing =
-        listingType === "All" || property.listingType === listingType;
+    const matchesType =
+      propertyType === "All types" ||
+      property.type === propertyType;
 
-      const matchesLocation =
-        location === "All locations" || property.location === location;
+    const matchesPrice =
+      !maxPrice || property.price <= Number(maxPrice);
 
-      const matchesType =
-        propertyType === "All" || property.type === propertyType;
-
-      const matchesBedrooms =
-        bedrooms === "Any" ||
-        (bedrooms === "4+" ? property.bedrooms >= 4 : property.bedrooms === Number(bedrooms));
-
-      const matchesPrice =
-        !maxPrice || property.price <= Number(maxPrice);
-
-      return (
-        matchesSearch &&
-        matchesListing &&
-        matchesLocation &&
-        matchesType &&
-        matchesBedrooms &&
-        matchesPrice
-      );
-    });
-  }, [search, listingType, location, propertyType, bedrooms, maxPrice]);
-
-  function toggleFavorite(id) {
-    setFavorites((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
+    return (
+      matchesSearch &&
+      matchesLocation &&
+      matchesType &&
+      matchesPrice
     );
-  }
-
-  function resetFilters() {
-    setSearch("");
-    setListingType("All");
-    setLocation("All locations");
-    setPropertyType("All");
-    setBedrooms("Any");
-    setMaxPrice("");
-  }
-
-  function scrollToListings() {
-    document.getElementById("properties")?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }
+  });
 
   return (
     <div className="app">
+
+      {/* NAVBAR */}
       <header className="navbar">
-        <a className="logo" href="#">
+        <div className="logo">
           Prop<span>Link</span>
-        </a>
-
-        <nav className={mobileMenu ? "nav-links mobile-open" : "nav-links"}>
-          <a href="#properties" onClick={() => setMobileMenu(false)}>
-            Find a Property
-          </a>
-          <a href="#how-it-works" onClick={() => setMobileMenu(false)}>
-            How it works
-          </a>
-          <a href="#about" onClick={() => setMobileMenu(false)}>
-            About
-          </a>
-        </nav>
-
-        <div className="nav-actions">
-          <button
-            className="favorite-nav"
-            onClick={() => scrollToListings()}
-          >
-            Saved {favorites.length > 0 && `(${favorites.length})`}
-          </button>
-
-          <button
-            className="primary-button"
-            onClick={() => setShowListingForm(true)}
-          >
-            List Property
-          </button>
         </div>
 
+        <nav className="nav-links">
+          <a href="#properties">Find a place</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#about">About</a>
+        </nav>
+
         <button
-          className="menu-button"
-          onClick={() => setMobileMenu(!mobileMenu)}
-          aria-label="Open menu"
+          className="primary-button"
+          onClick={() => setShowListing(true)}
         >
-          ☰
+          List Property
         </button>
       </header>
 
+      {/* HERO */}
       <main>
+
         <section className="hero">
+
           <div className="hero-content">
+
             <div className="hero-badge">
               Zimbabwe's property marketplace
             </div>
 
             <h1>
-              Find your place.
-              <br />
-              <span>Connect directly.</span>
+              Find your next
+              <span> place.</span>
             </h1>
 
             <p>
-              Discover homes, rooms, apartments and properties across
-              Zimbabwe — and connect directly with the people behind them.
+              Discover homes, apartments, rooms and commercial
+              properties across Zimbabwe — and connect directly
+              with the people behind them.
             </p>
 
-            <div className="hero-search">
-              <div className="search-field">
+            {/* SEARCH */}
+            <div className="search-panel">
+
+              <div className="search-main">
                 <span>⌕</span>
+
                 <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  type="text"
                   placeholder="Search by city, area or property..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
 
               <select
-                value={listingType}
-                onChange={(event) => setListingType(event.target.value)}
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
               >
-                <option value="All">Rent or Buy</option>
-                <option value="Rent">Rent</option>
-                <option value="Buy">Buy</option>
+                <option>All locations</option>
+                <option>Harare</option>
+                <option>Bulawayo</option>
+                <option>Gweru</option>
+                <option>Mutare</option>
               </select>
 
-              <button onClick={scrollToListings}>Search</button>
+              <select
+                value={propertyType}
+                onChange={(e) => setPropertyType(e.target.value)}
+              >
+                <option>All types</option>
+                <option>House</option>
+                <option>Apartment</option>
+                <option>Room</option>
+              </select>
+
+              <button
+                className="search-button"
+                onClick={() =>
+                  document
+                    .getElementById("properties")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                Search
+              </button>
+
             </div>
 
             <div className="hero-stats">
               <div>
-                <strong>Zimbabwe</strong>
-                <span>Built for local property</span>
+                <strong>500+</strong>
+                <span>Properties</span>
               </div>
+
+              <div>
+                <strong>4</strong>
+                <span>Cities</span>
+              </div>
+
               <div>
                 <strong>Direct</strong>
-                <span>Connect with owners</span>
-              </div>
-              <div>
-                <strong>Simple</strong>
-                <span>Search without the hassle</span>
+                <span>Connections</span>
               </div>
             </div>
+
           </div>
+
         </section>
 
-        <section className="search-section" id="properties">
+        {/* PROPERTY SECTION */}
+        <section
+          className="properties-section"
+          id="properties"
+        >
+
           <div className="section-heading">
+
             <div>
-              <span className="eyebrow">DISCOVER</span>
-              <h2>Find your next place</h2>
+              <span className="section-label">
+                EXPLORE
+              </span>
+
+              <h2>Find a place that fits.</h2>
+
+              <p>
+                Browse properties from people and businesses
+                looking for tenants or buyers.
+              </p>
             </div>
 
-            <span className="result-count">
+            <div className="results-count">
               {filteredProperties.length} properties
-            </span>
+            </div>
+
           </div>
 
-          <div className="filters">
-            <select
-              value={location}
-              onChange={(event) => setLocation(event.target.value)}
-            >
-              {cities.map((city) => (
-                <option key={city}>{city}</option>
-              ))}
-            </select>
-
-            <select
-              value={propertyType}
-              onChange={(event) => setPropertyType(event.target.value)}
-            >
-              <option value="All">All property types</option>
-              <option value="House">House</option>
-              <option value="Apartment">Apartment</option>
-              <option value="Room">Room</option>
-            </select>
-
-            <select
-              value={bedrooms}
-              onChange={(event) => setBedrooms(event.target.value)}
-            >
-              <option value="Any">Any bedrooms</option>
-              <option value="1">1 bedroom</option>
-              <option value="2">2 bedrooms</option>
-              <option value="3">3 bedrooms</option>
-              <option value="4+">4+ bedrooms</option>
-            </select>
+          {/* FILTER BAR */}
+          <div className="filter-bar">
 
             <input
               type="number"
               placeholder="Max price"
               value={maxPrice}
-              onChange={(event) => setMaxPrice(event.target.value)}
+              onChange={(e) => setMaxPrice(e.target.value)}
             />
 
-            <button className="reset-button" onClick={resetFilters}>
-              Reset
-            </button>
+            {(search ||
+              location !== "All locations" ||
+              propertyType !== "All types" ||
+              maxPrice) && (
+
+              <button
+                className="clear-button"
+                onClick={() => {
+                  setSearch("");
+                  setLocation("All locations");
+                  setPropertyType("All types");
+                  setMaxPrice("");
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+
           </div>
 
-          {filteredProperties.length > 0 ? (
-            <div className="property-grid">
-              {filteredProperties.map((property) => (
-                <article className="property-card" key={property.id}>
-                  <div className="image-wrapper">
+          {/* GRID */}
+          <div className="property-grid">
+
+            {filteredProperties.length > 0 ? (
+
+              filteredProperties.map((property) => (
+
+                <article
+                  className="property-card"
+                  key={property.id}
+                  onClick={() => setSelectedProperty(property)}
+                >
+
+                  <div className="property-image-wrapper">
+
                     <img
                       src={property.image}
                       alt={property.title}
                       className="property-image"
                     />
 
-                    <div className="listing-badge">
-                      {property.listingType}
-                    </div>
+                    <span className="property-type">
+                      {property.type}
+                    </span>
 
-                    <button
-                      className={
-                        favorites.includes(property.id)
-                          ? "heart-button active"
-                          : "heart-button"
-                      }
-                      onClick={() => toggleFavorite(property.id)}
-                      aria-label="Save property"
-                    >
-                      {favorites.includes(property.id) ? "♥" : "♡"}
-                    </button>
                   </div>
 
                   <div className="property-info">
-                    <div className="property-topline">
-                      <span className="property-type">
-                        {property.type}
-                      </span>
 
-                      {property.verified && (
-                        <span className="verified">✓ Verified</span>
-                      )}
+                    <div className="property-price">
+                      ${property.price}
+                      <small>/month</small>
                     </div>
 
                     <h3>{property.title}</h3>
 
-                    <p className="location">
-                      {property.area}, {property.location}
+                    <p className="property-location">
+                      📍 {property.location}
                     </p>
 
-                    <div className="property-meta">
-                      <span>{property.bedrooms} bed</span>
-                      <span>{property.bathrooms} bath</span>
+                    <div className="property-details">
+                      <span>
+                        🛏 {property.bedrooms} bedroom
+                        {property.bedrooms > 1 ? "s" : ""}
+                      </span>
+
+                      <span>
+                        View details →
+                      </span>
                     </div>
 
-                    <div className="card-bottom">
-                      <strong>
-                        {formatPrice(property.price, property.listingType)}
-                      </strong>
-
-                      <button
-                        className="view-button"
-                        onClick={() => setSelectedProperty(property)}
-                      >
-                        View
-                      </button>
-                    </div>
                   </div>
+
                 </article>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <div>⌕</div>
-              <h3>No properties found</h3>
-              <p>Try changing your search or filters.</p>
-              <button onClick={resetFilters}>Clear filters</button>
-            </div>
-          )}
+
+              ))
+
+            ) : (
+
+              <div className="empty-state">
+                <h3>No properties found</h3>
+                <p>
+                  Try another location, property type or price.
+                </p>
+              </div>
+
+            )}
+
+          </div>
+
         </section>
 
-        <section className="how-section" id="how-it-works">
+        {/* HOW IT WORKS */}
+        <section
+          className="how-section"
+          id="how-it-works"
+        >
+
           <div className="section-heading centered">
-            <span className="eyebrow">HOW IT WORKS</span>
-            <h2>Property search, simplified.</h2>
+
+            <span className="section-label">
+              SIMPLE
+            </span>
+
+            <h2>How PropLink works</h2>
+
             <p>
-              PropLink is designed to make finding and listing property
-              straightforward.
+              Finding a place shouldn't be complicated.
             </p>
+
           </div>
 
           <div className="steps">
+
             <div className="step">
-              <span>01</span>
+              <div className="step-number">01</div>
+
               <h3>Search</h3>
+
               <p>
-                Tell PropLink what kind of place you are looking for.
+                Tell PropLink what kind of property
+                you're looking for.
               </p>
             </div>
 
             <div className="step">
-              <span>02</span>
+              <div className="step-number">02</div>
+
               <h3>Discover</h3>
+
               <p>
-                Browse properties matching your location, budget and needs.
+                Compare available properties,
+                locations and prices.
               </p>
             </div>
 
             <div className="step">
-              <span>03</span>
+              <div className="step-number">03</div>
+
               <h3>Connect</h3>
+
               <p>
-                Contact the owner directly and arrange the next step.
+                Contact the owner or property
+                representative directly.
               </p>
             </div>
+
           </div>
+
         </section>
 
-        <section className="owner-cta" id="about">
-          <div>
-            <span className="eyebrow">PROPERTY OWNERS</span>
-            <h2>Have a property to list?</h2>
+        {/* OWNER CTA */}
+        <section className="owner-section">
+
+          <div className="owner-content">
+
+            <span className="section-label">
+              PROPERTY OWNERS
+            </span>
+
+            <h2>
+              Have a property?
+              <br />
+              Put it on PropLink.
+            </h2>
+
             <p>
-              Reach people actively searching for their next place.
+              Reach people actively searching for
+              somewhere to live, work or invest.
             </p>
+
+            <button
+              className="primary-button large"
+              onClick={() => setShowListing(true)}
+            >
+              List Your Property →
+            </button>
+
           </div>
 
-          <button
-            className="primary-button large"
-            onClick={() => setShowListingForm(true)}
-          >
-            List Your Property →
-          </button>
+          <div className="owner-decoration">
+            <div className="decoration-card">
+              <span>New listing</span>
+              <strong>3 Bedroom House</strong>
+              <small>Harare • $750/month</small>
+            </div>
+          </div>
+
         </section>
+
+        {/* ABOUT */}
+        <section
+          className="about-section"
+          id="about"
+        >
+
+          <div>
+            <span className="section-label">
+              ABOUT PROPLINK
+            </span>
+
+            <h2>
+              Making property
+              <span> easier.</span>
+            </h2>
+          </div>
+
+          <p>
+            PropLink is being built to make property discovery
+            simpler in Zimbabwe. Instead of searching through
+            scattered listings and unnecessary middlemen,
+            people can find properties and connect directly
+            with the people offering them.
+          </p>
+
+        </section>
+
       </main>
 
+      {/* FOOTER */}
       <footer>
-        <div>
-          <div className="logo">
-            Prop<span>Link</span>
-          </div>
-          <p>Find it. Link up. Move in.</p>
+
+        <div className="footer-logo">
+          Prop<span>Link</span>
         </div>
 
-        <div className="footer-right">
-          <span>Zimbabwe Property Marketplace</span>
-          <span>© 2026 PropLink</span>
-        </div>
+        <p>
+          Find it. Link up. Move in.
+        </p>
+
+        <p>
+          © 2026 PropLink
+        </p>
+
       </footer>
 
+      {/* PROPERTY MODAL */}
       {selectedProperty && (
+
         <div
           className="modal-overlay"
           onClick={() => setSelectedProperty(null)}
         >
+
           <div
             className="property-modal"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
+
             <button
-              className="close-button"
+              className="modal-close"
               onClick={() => setSelectedProperty(null)}
             >
               ×
@@ -502,139 +503,122 @@ function App() {
             />
 
             <div className="modal-content">
-              <div className="property-topline">
-                <span className="property-type">
-                  {selectedProperty.listingType}
-                </span>
 
-                {selectedProperty.verified && (
-                  <span className="verified">✓ Verified</span>
-                )}
-              </div>
+              <span className="property-type">
+                {selectedProperty.type}
+              </span>
 
               <h2>{selectedProperty.title}</h2>
 
               <p className="modal-location">
-                {selectedProperty.area}, {selectedProperty.location}
+                📍 {selectedProperty.location}
               </p>
 
-              <h3 className="modal-price">
-                {formatPrice(
-                  selectedProperty.price,
-                  selectedProperty.listingType
-                )}
-              </h3>
-
-              <div className="modal-meta">
-                <span>{selectedProperty.bedrooms} Bedrooms</span>
-                <span>{selectedProperty.bathrooms} Bathrooms</span>
-                <span>{selectedProperty.type}</span>
+              <div className="modal-price">
+                ${selectedProperty.price}
+                <small>/month</small>
               </div>
 
-              <p className="description">
-                {selectedProperty.description}
-              </p>
+              <div className="modal-info">
+                <span>
+                  🛏 {selectedProperty.bedrooms} Bedrooms
+                </span>
 
-              <h3>Amenities</h3>
-
-              <div className="amenities">
-                {selectedProperty.amenities.map((amenity) => (
-                  <span key={amenity}>{amenity}</span>
-                ))}
+                <span>
+                  ✓ Available
+                </span>
               </div>
 
               <button
                 className="primary-button full"
                 onClick={() =>
                   alert(
-                    "Owner contact functionality will be connected in the next stage."
+                    "Direct owner contact will be connected here in the next PropLink version."
                   )
                 }
               >
                 Contact Owner
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       )}
 
-      {showListingForm && (
+      {/* LIST PROPERTY MODAL */}
+      {showListing && (
+
         <div
           className="modal-overlay"
-          onClick={() => setShowListingForm(false)}
+          onClick={() => setShowListing(false)}
         >
+
           <div
             className="listing-modal"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
+
             <button
-              className="close-button"
-              onClick={() => setShowListingForm(false)}
+              className="modal-close"
+              onClick={() => setShowListing(false)}
             >
               ×
             </button>
 
-            <span className="eyebrow">LIST YOUR PROPERTY</span>
-            <h2>Put your property on PropLink.</h2>
+            <span className="section-label">
+              PROPERTY OWNERS
+            </span>
+
+            <h2>List your property</h2>
+
             <p>
-              This is the V1 listing form. We will connect it to a real
-              database later.
+              This is the beginning of the PropLink
+              property-listing system.
             </p>
 
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                alert("Property listing submitted.");
-                setShowListingForm(false);
-              }}
+            <input
+              type="text"
+              placeholder="Property title"
+            />
+
+            <input
+              type="text"
+              placeholder="Location"
+            />
+
+            <input
+              type="number"
+              placeholder="Monthly price"
+            />
+
+            <select>
+              <option>Property type</option>
+              <option>House</option>
+              <option>Apartment</option>
+              <option>Room</option>
+              <option>Commercial</option>
+            </select>
+
+            <button
+              className="primary-button full"
+              onClick={() =>
+                alert(
+                  "Listing submission will be connected to the PropLink backend next."
+                )
+              }
             >
-              <input required placeholder="Property title" />
+              Continue
+            </button>
 
-              <div className="form-row">
-                <select required defaultValue="">
-                  <option value="" disabled>
-                    Location
-                  </option>
-                  {cities.slice(1).map((city) => (
-                    <option key={city}>{city}</option>
-                  ))}
-                </select>
-
-                <select required defaultValue="">
-                  <option value="" disabled>
-                    Rent or Buy
-                  </option>
-                  <option>Rent</option>
-                  <option>Buy</option>
-                </select>
-              </div>
-
-              <div className="form-row">
-                <input required type="number" placeholder="Price" />
-
-                <select required defaultValue="">
-                  <option value="" disabled>
-                    Property type
-                  </option>
-                  <option>House</option>
-                  <option>Apartment</option>
-                  <option>Room</option>
-                </select>
-              </div>
-
-              <textarea
-                required
-                placeholder="Tell people about your property..."
-                rows="4"
-              />
-
-              <button className="primary-button full" type="submit">
-                Submit Property
-              </button>
-            </form>
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 }
