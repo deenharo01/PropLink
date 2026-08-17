@@ -109,31 +109,74 @@ function App() {
 
   const [listingForm, setListingForm] = useState(emptyListing);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  /*
+   * ============================
+   * AUTHENTICATION
+   * ============================
+   */
 
-      setUser(user);
-      setAuthLoading(false);
+  useEffect(() => {
+    let mounted = true;
+
+    const initialiseAuth = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error(
+            "Supabase session error:",
+            error.message
+          );
+
+          if (mounted) {
+            setUser(null);
+          }
+        } else if (mounted) {
+          setUser(session?.user ?? null);
+        }
+      } catch (error) {
+        console.error(
+          "Authentication initialization failed:",
+          error
+        );
+
+        if (mounted) {
+          setUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setAuthLoading(false);
+        }
+      }
     };
 
-    loadUser();
+    initialiseAuth();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        if (!mounted) return;
+
         setUser(session?.user ?? null);
         setAuthLoading(false);
       }
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
+
+  /*
+   * ============================
+   * SAVE LOCAL PROPERTIES
+   * ============================
+   */
 
   useEffect(() => {
     localStorage.setItem(
@@ -141,6 +184,12 @@ function App() {
       JSON.stringify(properties)
     );
   }, [properties]);
+
+  /*
+   * ============================
+   * FILTER PROPERTIES
+   * ============================
+   */
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
@@ -190,6 +239,12 @@ function App() {
     maxPrice,
   ]);
 
+  /*
+   * ============================
+   * FILTER CONTROLS
+   * ============================
+   */
+
   const resetFilters = () => {
     setSearch("");
     setLocation("All locations");
@@ -197,6 +252,12 @@ function App() {
     setListingType("All listings");
     setMaxPrice("");
   };
+
+  /*
+   * ============================
+   * LISTING FORM
+   * ============================
+   */
 
   const handleListingChange = (event) => {
     const { name, value } = event.target;
@@ -255,6 +316,12 @@ function App() {
     }, 100);
   };
 
+  /*
+   * ============================
+   * PROPERTY MODALS
+   * ============================
+   */
+
   const openProperty = (property) => {
     setSelectedProperty(property);
   };
@@ -280,10 +347,39 @@ function App() {
     setShowListing(true);
   };
 
+  /*
+   * ============================
+   * SIGN OUT
+   * ============================
+   */
+
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    try {
+      const { error } =
+        await supabase.auth.signOut();
+
+      if (error) {
+        console.error(
+          "Sign out error:",
+          error.message
+        );
+        return;
+      }
+
+      setUser(null);
+    } catch (error) {
+      console.error(
+        "Sign out failed:",
+        error
+      );
+    }
   };
+
+  /*
+   * ============================
+   * RESET DEMO
+   * ============================
+   */
 
   const clearStoredListings = () => {
     if (
@@ -296,10 +392,13 @@ function App() {
   };
 
   /*
-   * AUTHENTICATION GATE
+   * ============================
+   * AUTH LOADING SCREEN
+   * ============================
    *
-   * The user must authenticate before seeing
-   * the PropLink marketplace.
+   * This prevents the home page from
+   * appearing before Supabase finishes
+   * checking the existing session.
    */
 
   if (authLoading) {
@@ -310,19 +409,52 @@ function App() {
           background: "#050505",
           color: "white",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: "Arial, sans-serif",
+          gap: "12px",
         }}
       >
-        Loading PropLink...
+        <div
+          style={{
+            fontSize: "28px",
+            fontWeight: "900",
+            letterSpacing: "-1px",
+          }}
+        >
+          Prop<span style={{ color: "#1877f2" }}>Link</span>
+        </div>
+
+        <div
+          style={{
+            color: "#777e89",
+            fontSize: "13px",
+          }}
+        >
+          Loading...
+        </div>
       </div>
     );
   }
 
+  /*
+   * ============================
+   * AUTHENTICATION GATE
+   * ============================
+   *
+   * NO USER = NO HOME PAGE.
+   */
+
   if (!user) {
     return <Auth />;
   }
+
+  /*
+   * ============================
+   * PROPLINK HOME
+   * ============================
+   */
 
   return (
     <div className="app">
@@ -336,6 +468,7 @@ function App() {
         </div>
 
         <nav className="nav-links">
+
           <a href="#properties">
             Find a place
           </a>
@@ -347,6 +480,7 @@ function App() {
           <a href="#about">
             About
           </a>
+
         </nav>
 
         <div
@@ -485,17 +619,30 @@ function App() {
                 <strong>
                   {properties.length}+
                 </strong>
-                <span>Properties</span>
+
+                <span>
+                  Properties
+                </span>
               </div>
 
               <div>
-                <strong>4+</strong>
-                <span>Cities</span>
+                <strong>
+                  4+
+                </strong>
+
+                <span>
+                  Cities
+                </span>
               </div>
 
               <div>
-                <strong>Direct</strong>
-                <span>Connections</span>
+                <strong>
+                  Direct
+                </strong>
+
+                <span>
+                  Connections
+                </span>
               </div>
 
             </div>
@@ -567,9 +714,18 @@ function App() {
                 fontSize: "13px",
               }}
             >
-              <option>All listings</option>
-              <option>Rent</option>
-              <option>Sale</option>
+              <option>
+                All listings
+              </option>
+
+              <option>
+                Rent
+              </option>
+
+              <option>
+                Sale
+              </option>
+
             </select>
 
             {(search ||
@@ -577,12 +733,14 @@ function App() {
               propertyType !== "All types" ||
               listingType !== "All listings" ||
               maxPrice) && (
+
               <button
                 className="clear-button"
                 onClick={resetFilters}
               >
                 Clear filters
               </button>
+
             )}
 
           </div>
@@ -590,75 +748,83 @@ function App() {
           <div className="property-grid">
 
             {filteredProperties.length > 0 ? (
-              filteredProperties.map((property) => (
-                <article
-                  className="property-card"
-                  key={property.id}
-                  onClick={() =>
-                    openProperty(property)
-                  }
-                >
 
-                  <div className="property-image-wrapper">
+              filteredProperties.map(
+                (property) => (
 
-                    <img
-                      src={property.image}
-                      alt={property.title}
-                      className="property-image"
-                    />
+                  <article
+                    className="property-card"
+                    key={property.id}
+                    onClick={() =>
+                      openProperty(property)
+                    }
+                  >
 
-                    <span className="property-type">
-                      {property.listingType}
-                    </span>
+                    <div className="property-image-wrapper">
 
-                  </div>
+                      <img
+                        src={property.image}
+                        alt={property.title}
+                        className="property-image"
+                      />
 
-                  <div className="property-info">
-
-                    <div className="property-price">
-
-                      $
-                      {Number(
-                        property.price
-                      ).toLocaleString()}
-
-                      <small>
-                        {property.listingType === "Rent"
-                          ? "/month"
-                          : ""}
-                      </small>
-
-                    </div>
-
-                    <h3>
-                      {property.title}
-                    </h3>
-
-                    <p className="property-location">
-                      📍 {property.location}
-                    </p>
-
-                    <div className="property-details">
-
-                      <span>
-                        🛏 {property.bedrooms}{" "}
-                        bedroom
-                        {property.bedrooms > 1
-                          ? "s"
-                          : ""}
-                      </span>
-
-                      <span>
-                        View details →
+                      <span className="property-type">
+                        {property.listingType}
                       </span>
 
                     </div>
 
-                  </div>
+                    <div className="property-info">
 
-                </article>
-              ))
+                      <div className="property-price">
+
+                        $
+                        {Number(
+                          property.price
+                        ).toLocaleString()}
+
+                        <small>
+                          {property.listingType ===
+                          "Rent"
+                            ? "/month"
+                            : ""}
+                        </small>
+
+                      </div>
+
+                      <h3>
+                        {property.title}
+                      </h3>
+
+                      <p className="property-location">
+                        📍 {property.location}
+                      </p>
+
+                      <div className="property-details">
+
+                        <span>
+                          🛏 {property.bedrooms}{" "}
+                          bedroom
+                          {property.bedrooms > 1
+                            ? "s"
+                            : ""}
+                        </span>
+
+                        <span>
+                          View details →
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                  </article>
+
+                )
+              )
+
             ) : (
+
               <div className="empty-state">
 
                 <h3>
@@ -681,6 +847,7 @@ function App() {
                 </button>
 
               </div>
+
             )}
 
           </div>
@@ -885,6 +1052,7 @@ function App() {
       {/* PROPERTY DETAILS MODAL */}
 
       {selectedProperty && (
+
         <div
           className="modal-overlay"
           onClick={closeProperty}
@@ -972,11 +1140,13 @@ function App() {
           </div>
 
         </div>
+
       )}
 
       {/* CONTACT OWNER MODAL */}
 
       {contactProperty && (
+
         <div
           className="modal-overlay"
           onClick={() =>
@@ -1011,9 +1181,11 @@ function App() {
             <p>
               You're interested in:
               <br />
+
               <strong>
                 {contactProperty.title}
               </strong>
+
             </p>
 
             <input
@@ -1047,11 +1219,13 @@ function App() {
             <button
               className="primary-button full"
               onClick={() => {
+
                 alert(
                   "Message ready. Direct owner messaging will be connected to the PropLink backend."
                 );
 
                 setContactProperty(null);
+
               }}
             >
               Send Message
@@ -1060,11 +1234,13 @@ function App() {
           </div>
 
         </div>
+
       )}
 
       {/* LIST PROPERTY MODAL */}
 
       {showListing && (
+
         <div
           className="modal-overlay"
           onClick={() =>
@@ -1133,6 +1309,7 @@ function App() {
                 value={listingForm.listingType}
                 onChange={handleListingChange}
               >
+
                 <option value="Rent">
                   For Rent
                 </option>
@@ -1140,6 +1317,7 @@ function App() {
                 <option value="Sale">
                   For Sale
                 </option>
+
               </select>
 
               <select
@@ -1147,6 +1325,7 @@ function App() {
                 value={listingForm.type}
                 onChange={handleListingChange}
               >
+
                 <option value="House">
                   House
                 </option>
@@ -1162,6 +1341,7 @@ function App() {
                 <option value="Commercial">
                   Commercial
                 </option>
+
               </select>
 
               <select
@@ -1169,6 +1349,7 @@ function App() {
                 value={listingForm.bedrooms}
                 onChange={handleListingChange}
               >
+
                 <option value="1">
                   1 Bedroom
                 </option>
@@ -1188,6 +1369,7 @@ function App() {
                 <option value="5">
                   5+ Bedrooms
                 </option>
+
               </select>
 
               <button
@@ -1202,6 +1384,7 @@ function App() {
           </div>
 
         </div>
+
       )}
 
     </div>
