@@ -3,26 +3,19 @@ function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#ffffff",
-        color: "#111111",
+        background: "#050505",
+        color: "#ffffff",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "column",
         fontFamily: "Arial, sans-serif",
-        padding: "24px",
-        textAlign: "center",
       }}
     >
-      <h1 style={{ marginBottom: "10px" }}>
-        PropLink
+      <h1>
+        Prop<span style={{ color: "#00d084" }}>Link</span>
       </h1>
-      <p>
-        React is working correctly.
-      </p>
-      <p style={{ color: "#666" }}>
-        This is a temporary rendering test.
-      </p>
+      <p>React is rendering correctly.</p>
     </div>
   );
 }
