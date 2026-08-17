@@ -84,9 +84,7 @@ const emptyListing = {
 function App() {
   const [properties, setProperties] = useState(() => {
     try {
-      const saved = localStorage.getItem(
-        "proplink-properties"
-      );
+      const saved = localStorage.getItem("proplink-properties");
 
       return saved
         ? JSON.parse(saved)
@@ -97,28 +95,19 @@ function App() {
   });
 
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [search, setSearch] = useState("");
-  const [location, setLocation] =
-    useState("All locations");
-  const [propertyType, setPropertyType] =
-    useState("All types");
-  const [listingType, setListingType] =
-    useState("All listings");
+  const [location, setLocation] = useState("All locations");
+  const [propertyType, setPropertyType] = useState("All types");
+  const [listingType, setListingType] = useState("All listings");
   const [maxPrice, setMaxPrice] = useState("");
 
-  const [showAuth, setShowAuth] = useState(false);
-  const [showListing, setShowListing] =
-    useState(false);
+  const [showListing, setShowListing] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [contactProperty, setContactProperty] = useState(null);
 
-  const [selectedProperty, setSelectedProperty] =
-    useState(null);
-
-  const [contactProperty, setContactProperty] =
-    useState(null);
-
-  const [listingForm, setListingForm] =
-    useState(emptyListing);
+  const [listingForm, setListingForm] = useState(emptyListing);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -127,6 +116,7 @@ function App() {
       } = await supabase.auth.getUser();
 
       setUser(user);
+      setAuthLoading(false);
     };
 
     loadUser();
@@ -136,6 +126,7 @@ function App() {
     } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
+        setAuthLoading(false);
       }
     );
 
@@ -180,8 +171,7 @@ function App() {
 
       const matchesPrice =
         !maxPrice ||
-        Number(property.price) <=
-          Number(maxPrice);
+        Number(property.price) <= Number(maxPrice);
 
       return (
         matchesSearch &&
@@ -222,7 +212,6 @@ function App() {
 
     if (!user) {
       setShowListing(false);
-      setShowAuth(true);
       return;
     }
 
@@ -243,12 +232,9 @@ function App() {
       location: listingForm.location.trim(),
       price: Number(listingForm.price),
       type: listingForm.type,
-      bedrooms: Number(
-        listingForm.bedrooms
-      ),
+      bedrooms: Number(listingForm.bedrooms),
       listingType: listingForm.listingType,
-      owner:
-        user.email || "PropLink Owner",
+      owner: user.email || "PropLink Owner",
       image: `https://picsum.photos/seed/proplink-${Date.now()}/800/600`,
     };
 
@@ -279,8 +265,6 @@ function App() {
 
   const handleContactOwner = (property) => {
     if (!user) {
-      setSelectedProperty(null);
-      setShowAuth(true);
       return;
     }
 
@@ -290,7 +274,6 @@ function App() {
 
   const handleListProperty = () => {
     if (!user) {
-      setShowAuth(true);
       return;
     }
 
@@ -311,6 +294,35 @@ function App() {
       setProperties(starterProperties);
     }
   };
+
+  /*
+   * AUTHENTICATION GATE
+   *
+   * The user must authenticate before seeing
+   * the PropLink marketplace.
+   */
+
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#050505",
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        Loading PropLink...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
 
   return (
     <div className="app">
@@ -344,36 +356,26 @@ function App() {
             gap: "10px",
           }}
         >
-          {user ? (
-            <>
-              <span
-                style={{
-                  color: "#777e89",
-                  fontSize: "12px",
-                  maxWidth: "150px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {user.email}
-              </span>
 
-              <button
-                className="primary-button"
-                onClick={handleSignOut}
-              >
-                Sign Out
-              </button>
-            </>
-          ) : (
-            <button
-              className="primary-button"
-              onClick={() => setShowAuth(true)}
-            >
-              Sign In
-            </button>
-          )}
+          <span
+            style={{
+              color: "#777e89",
+              fontSize: "12px",
+              maxWidth: "150px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {user.email}
+          </span>
+
+          <button
+            className="primary-button"
+            onClick={handleSignOut}
+          >
+            Sign Out
+          </button>
 
           <button
             className="primary-button"
@@ -381,6 +383,7 @@ function App() {
           >
             List Property
           </button>
+
         </div>
 
       </header>
@@ -425,9 +428,7 @@ function App() {
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       document
-                        .getElementById(
-                          "properties"
-                        )
+                        .getElementById("properties")
                         ?.scrollIntoView({
                           behavior: "smooth",
                         });
@@ -467,9 +468,7 @@ function App() {
                 className="search-button"
                 onClick={() =>
                   document
-                    .getElementById(
-                      "properties"
-                    )
+                    .getElementById("properties")
                     ?.scrollIntoView({
                       behavior: "smooth",
                     })
@@ -591,77 +590,74 @@ function App() {
           <div className="property-grid">
 
             {filteredProperties.length > 0 ? (
-              filteredProperties.map(
-                (property) => (
-                  <article
-                    className="property-card"
-                    key={property.id}
-                    onClick={() =>
-                      openProperty(property)
-                    }
-                  >
+              filteredProperties.map((property) => (
+                <article
+                  className="property-card"
+                  key={property.id}
+                  onClick={() =>
+                    openProperty(property)
+                  }
+                >
 
-                    <div className="property-image-wrapper">
+                  <div className="property-image-wrapper">
 
-                      <img
-                        src={property.image}
-                        alt={property.title}
-                        className="property-image"
-                      />
+                    <img
+                      src={property.image}
+                      alt={property.title}
+                      className="property-image"
+                    />
 
-                      <span className="property-type">
-                        {property.listingType}
+                    <span className="property-type">
+                      {property.listingType}
+                    </span>
+
+                  </div>
+
+                  <div className="property-info">
+
+                    <div className="property-price">
+
+                      $
+                      {Number(
+                        property.price
+                      ).toLocaleString()}
+
+                      <small>
+                        {property.listingType === "Rent"
+                          ? "/month"
+                          : ""}
+                      </small>
+
+                    </div>
+
+                    <h3>
+                      {property.title}
+                    </h3>
+
+                    <p className="property-location">
+                      📍 {property.location}
+                    </p>
+
+                    <div className="property-details">
+
+                      <span>
+                        🛏 {property.bedrooms}{" "}
+                        bedroom
+                        {property.bedrooms > 1
+                          ? "s"
+                          : ""}
+                      </span>
+
+                      <span>
+                        View details →
                       </span>
 
                     </div>
 
-                    <div className="property-info">
+                  </div>
 
-                      <div className="property-price">
-
-                        $
-                        {Number(
-                          property.price
-                        ).toLocaleString()}
-
-                        <small>
-                          {property.listingType ===
-                          "Rent"
-                            ? "/month"
-                            : ""}
-                        </small>
-
-                      </div>
-
-                      <h3>
-                        {property.title}
-                      </h3>
-
-                      <p className="property-location">
-                        📍 {property.location}
-                      </p>
-
-                      <div className="property-details">
-
-                        <span>
-                          🛏 {property.bedrooms}{" "}
-                          bedroom
-                          {property.bedrooms > 1
-                            ? "s"
-                            : ""}
-                        </span>
-
-                        <span>
-                          View details →
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                  </article>
-                )
-              )
+                </article>
+              ))
             ) : (
               <div className="empty-state">
 
@@ -717,42 +713,54 @@ function App() {
           <div className="steps">
 
             <div className="step">
+
               <div className="step-number">
                 01
               </div>
 
-              <h3>Search</h3>
+              <h3>
+                Search
+              </h3>
 
               <p>
                 Tell PropLink what kind of property
                 you're looking for.
               </p>
+
             </div>
 
             <div className="step">
+
               <div className="step-number">
                 02
               </div>
 
-              <h3>Discover</h3>
+              <h3>
+                Discover
+              </h3>
 
               <p>
                 Compare available properties,
                 locations and prices.
               </p>
+
             </div>
 
             <div className="step">
+
               <div className="step-number">
                 03
               </div>
 
-              <h3>Connect</h3>
+              <h3>
+                Connect
+              </h3>
 
               <p>
                 Contact the owner or property
                 representative directly.
               </p>
+
             </div>
 
           </div>
@@ -1194,14 +1202,6 @@ function App() {
           </div>
 
         </div>
-      )}
-
-      {/* AUTH MODAL */}
-
-      {showAuth && (
-        <Auth
-          onClose={() => setShowAuth(false)}
-        />
       )}
 
     </div>
