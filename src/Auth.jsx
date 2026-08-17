@@ -3,9 +3,9 @@ import { supabase, supabaseConfigured } from "./supabaseClient";
 
 function Auth() {
   const [mode, setMode] = useState("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -18,7 +18,7 @@ function Auth() {
 
     if (!supabaseConfigured || !supabase) {
       setMessage(
-        "PropLink authentication is not connected yet. Please configure Supabase."
+        "PropLink authentication is not connected yet. Add your Supabase environment variables."
       );
       setMessageType("error");
       return;
@@ -28,6 +28,12 @@ function Auth() {
 
     try {
       if (mode === "signup") {
+        if (!name.trim()) {
+          setMessage("Please enter your full name.");
+          setMessageType("error");
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -48,28 +54,29 @@ function Auth() {
           setMessage(
             "Account created. Check your email to confirm your account."
           );
+          setMessageType("success");
         } else {
           setMessage("Account created successfully.");
+          setMessageType("success");
         }
-
-        setMessageType("success");
       } else {
-        const { error } =
-          await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password,
-          });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
         if (error) {
           setMessage(error.message);
           setMessageType("error");
           return;
         }
+
+        setMessage("Signed in successfully.");
+        setMessageType("success");
       }
     } catch (error) {
       setMessage(
-        error?.message ||
-          "Something went wrong. Please try again."
+        error?.message || "Something went wrong. Please try again."
       );
       setMessageType("error");
     } finally {
@@ -78,12 +85,10 @@ function Auth() {
   };
 
   const switchMode = () => {
-    setMode((current) =>
-      current === "login" ? "signup" : "login"
-    );
-
+    setMode(mode === "login" ? "signup" : "login");
     setMessage("");
     setMessageType("");
+    setPassword("");
   };
 
   return (
@@ -91,86 +96,41 @@ function Auth() {
       <div className="auth-glow auth-glow-one" />
       <div className="auth-glow auth-glow-two" />
 
-      <header className="auth-topbar">
-        <div className="auth-logo">
-          Prop<span>Link</span>
-        </div>
+      <div className="auth-container">
+        <div className="auth-brand">
+          <div className="auth-logo-mark">P</div>
 
-        <div className="auth-location">
-          Zimbabwe's property marketplace
-        </div>
-      </header>
-
-      <main className="auth-layout">
-
-        <section className="auth-intro">
-          <div className="auth-kicker">
-            FIND YOUR PLACE
-          </div>
-
-          <h1>
-            Property
-            <br />
-            <span>without the hassle.</span>
-          </h1>
-
-          <p>
-            Discover homes, apartments, rooms and
-            commercial spaces across Zimbabwe.
-            Connect directly with the people behind
-            the property.
-          </p>
-
-          <div className="auth-points">
-            <div>
-              <span>01</span>
-              <p>Search properties</p>
+          <div>
+            <div className="auth-brand-name">
+              Prop<span>Link</span>
             </div>
 
-            <div>
-              <span>02</span>
-              <p>Compare your options</p>
-            </div>
-
-            <div>
-              <span>03</span>
-              <p>Connect directly</p>
+            <div className="auth-brand-subtitle">
+              Zimbabwe Property Marketplace
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="auth-card">
+        <div className="auth-card">
+          <div className="auth-card-top">
+            <span className="section-label">
+              {mode === "login" ? "WELCOME BACK" : "JOIN PROPLINK"}
+            </span>
 
-          <div className="auth-card-header">
-            <div className="auth-mini-label">
-              PROPLINK ACCOUNT
-            </div>
-
-            <h2>
+            <h1>
               {mode === "login"
-                ? "Welcome back."
-                : "Create your account."}
-            </h2>
+                ? "Find your next place."
+                : "Start your property journey."}
+            </h1>
 
             <p>
               {mode === "login"
-                ? "Sign in to continue exploring properties."
-                : "Join PropLink and start finding your next place."}
+                ? "Sign in to discover properties and connect directly with owners."
+                : "Create an account to find, list and connect through PropLink."}
             </p>
           </div>
 
-          {!supabaseConfigured && (
-            <div className="auth-warning">
-              Authentication is not configured for this
-              deployment yet.
-            </div>
-          )}
-
-          <form
-            className="auth-form"
-            onSubmit={handleSubmit}
-          >
-
+          <form onSubmit={handleSubmit} className="auth-form">
             {mode === "signup" && (
               <div className="auth-field">
                 <label>Full name</label>
@@ -179,9 +139,8 @@ function Auth() {
                   type="text"
                   placeholder="Your full name"
                   value={name}
-                  onChange={(event) =>
-                    setName(event.target.value)
-                  }
+                  onChange={(event) => setName(event.target.value)}
+                  autoComplete="name"
                   required
                 />
               </div>
@@ -194,22 +153,30 @@ function Auth() {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(event) =>
-                  setEmail(event.target.value)
-                }
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
                 required
               />
             </div>
 
             <div className="auth-field">
-              <label>Password</label>
+              <div className="password-label-row">
+                <label>Password</label>
+
+                {mode === "login" && (
+                  <span className="password-hint">
+                    Minimum 6 characters
+                  </span>
+                )}
+              </div>
 
               <input
                 type="password"
-                placeholder="Minimum 6 characters"
+                placeholder="Enter your password"
                 value={password}
-                onChange={(event) =>
-                  setPassword(event.target.value)
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
                 }
                 minLength={6}
                 required
@@ -217,10 +184,12 @@ function Auth() {
             </div>
 
             {message && (
-              <div
-                className={`auth-message ${messageType}`}
-              >
-                {message}
+              <div className={`auth-message ${messageType}`}>
+                <span>
+                  {messageType === "error" ? "!" : "✓"}
+                </span>
+
+                <p>{message}</p>
               </div>
             )}
 
@@ -232,44 +201,41 @@ function Auth() {
               {loading
                 ? "Please wait..."
                 : mode === "login"
-                  ? "Sign in"
-                  : "Create account"}
+                  ? "Sign in to PropLink"
+                  : "Create my account"}
             </button>
-
           </form>
 
           <div className="auth-divider">
-            <span />
-            <small>OR</small>
-            <span />
+            <span>OR</span>
           </div>
 
           <div className="auth-switch">
             <span>
               {mode === "login"
-                ? "Don't have an account?"
-                : "Already have an account?"}
+                ? "Don't have a PropLink account?"
+                : "Already have a PropLink account?"}
             </span>
 
-            <button
-              type="button"
-              onClick={switchMode}
-            >
-              {mode === "login"
-                ? "Create one"
-                : "Sign in"}
+            <button type="button" onClick={switchMode}>
+              {mode === "login" ? "Create one" : "Sign in"}
             </button>
           </div>
+        </div>
 
-        </section>
+        <div className="auth-trust">
+          <span>●</span>
+          Direct connections
+          <span>•</span>
+          Zimbabwe properties
+          <span>•</span>
+          Built for you
+        </div>
 
-      </main>
-
-      <footer className="auth-footer">
-        <span>PropLink</span>
-        <span>Find it. Link up. Move in.</span>
-        <span>© 2026</span>
-      </footer>
+        <p className="auth-footer">
+          Find it. Link up. Move in.
+        </p>
+      </div>
     </div>
   );
 }
