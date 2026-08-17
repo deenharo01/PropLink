@@ -85,10 +85,7 @@ function App() {
   const [properties, setProperties] = useState(() => {
     try {
       const saved = localStorage.getItem("proplink-properties");
-
-      return saved
-        ? JSON.parse(saved)
-        : starterProperties;
+      return saved ? JSON.parse(saved) : starterProperties;
     } catch {
       return starterProperties;
     }
@@ -96,6 +93,7 @@ function App() {
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [appError, setAppError] = useState("");
 
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("All locations");
@@ -109,51 +107,45 @@ function App() {
 
   const [listingForm, setListingForm] = useState(emptyListing);
 
-  /*
-   * ============================
-   * AUTHENTICATION
-   * ============================
-   */
-
   useEffect(() => {
     let mounted = true;
 
-    const initialiseAuth = async () => {
+    const loadUser = async () => {
       try {
         const {
-          data: { session },
+          data: { user },
           error,
-        } = await supabase.auth.getSession();
+        } = await supabase.auth.getUser();
 
         if (error) {
-          console.error(
-            "Supabase session error:",
-            error.message
-          );
+          console.error("Supabase auth error:", error);
 
           if (mounted) {
-            setUser(null);
+            setAppError(error.message);
+            setAuthLoading(false);
           }
-        } else if (mounted) {
-          setUser(session?.user ?? null);
+
+          return;
         }
-      } catch (error) {
-        console.error(
-          "Authentication initialization failed:",
-          error
-        );
 
         if (mounted) {
-          setUser(null);
+          setUser(user);
+          setAuthLoading(false);
         }
-      } finally {
+      } catch (error) {
+        console.error("Authentication startup error:", error);
+
         if (mounted) {
+          setAppError(
+            error?.message ||
+              "Unable to connect to Supabase."
+          );
           setAuthLoading(false);
         }
       }
     };
 
-    initialiseAuth();
+    loadUser();
 
     const {
       data: { subscription },
@@ -168,28 +160,23 @@ function App() {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
-  /*
-   * ============================
-   * SAVE LOCAL PROPERTIES
-   * ============================
-   */
-
   useEffect(() => {
-    localStorage.setItem(
-      "proplink-properties",
-      JSON.stringify(properties)
-    );
+    try {
+      localStorage.setItem(
+        "proplink-properties",
+        JSON.stringify(properties)
+      );
+    } catch (error) {
+      console.error(
+        "Could not save properties:",
+        error
+      );
+    }
   }, [properties]);
-
-  /*
-   * ============================
-   * FILTER PROPERTIES
-   * ============================
-   */
 
   const filteredProperties = useMemo(() => {
     return properties.filter((property) => {
@@ -239,12 +226,6 @@ function App() {
     maxPrice,
   ]);
 
-  /*
-   * ============================
-   * FILTER CONTROLS
-   * ============================
-   */
-
   const resetFilters = () => {
     setSearch("");
     setLocation("All locations");
@@ -252,12 +233,6 @@ function App() {
     setListingType("All listings");
     setMaxPrice("");
   };
-
-  /*
-   * ============================
-   * LISTING FORM
-   * ============================
-   */
 
   const handleListingChange = (event) => {
     const { name, value } = event.target;
@@ -268,7 +243,7 @@ function App() {
     }));
   };
 
-  const submitListing = async (event) => {
+  const submitListing = (event) => {
     event.preventDefault();
 
     if (!user) {
@@ -295,7 +270,10 @@ function App() {
       type: listingForm.type,
       bedrooms: Number(listingForm.bedrooms),
       listingType: listingForm.listingType,
-      owner: user.email || "PropLink Owner",
+      owner:
+        user.user_metadata?.full_name ||
+        user.email ||
+        "PropLink Owner",
       image: `https://picsum.photos/seed/proplink-${Date.now()}/800/600`,
     };
 
@@ -316,70 +294,24 @@ function App() {
     }, 100);
   };
 
-  /*
-   * ============================
-   * PROPERTY MODALS
-   * ============================
-   */
-
-  const openProperty = (property) => {
-    setSelectedProperty(property);
-  };
-
-  const closeProperty = () => {
-    setSelectedProperty(null);
-  };
-
-  const handleContactOwner = (property) => {
-    if (!user) {
-      return;
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error("Sign out error:", error);
     }
-
-    setContactProperty(property);
-    setSelectedProperty(null);
   };
 
   const handleListProperty = () => {
-    if (!user) {
-      return;
-    }
-
+    if (!user) return;
     setShowListing(true);
   };
 
-  /*
-   * ============================
-   * SIGN OUT
-   * ============================
-   */
-
-  const handleSignOut = async () => {
-    try {
-      const { error } =
-        await supabase.auth.signOut();
-
-      if (error) {
-        console.error(
-          "Sign out error:",
-          error.message
-        );
-        return;
-      }
-
-      setUser(null);
-    } catch (error) {
-      console.error(
-        "Sign out failed:",
-        error
-      );
-    }
+  const handleContactOwner = (property) => {
+    setSelectedProperty(null);
+    setContactProperty(property);
   };
-
-  /*
-   * ============================
-   * RESET DEMO
-   * ============================
-   */
 
   const clearStoredListings = () => {
     if (
@@ -391,15 +323,97 @@ function App() {
     }
   };
 
-  /*
-   * ============================
-   * AUTH LOADING SCREEN
-   * ============================
-   *
-   * This prevents the home page from
-   * appearing before Supabase finishes
-   * checking the existing session.
-   */
+  if (appError) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#050505",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+          fontFamily:
+            "Inter, Arial, sans-serif",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "520px",
+            background: "#101318",
+            border:
+              "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "16px",
+            padding: "28px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "12px",
+              letterSpacing: "2px",
+              color: "#8b93a1",
+              marginBottom: "10px",
+            }}
+          >
+            PROPLINK ERROR
+          </div>
+
+          <h1
+            style={{
+              margin: "0 0 12px",
+              fontSize: "28px",
+            }}
+          >
+            PropLink could not start
+          </h1>
+
+          <p
+            style={{
+              color: "#aeb5c0",
+              lineHeight: 1.6,
+            }}
+          >
+            The application encountered an error
+            while connecting to Supabase.
+          </p>
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "14px",
+              borderRadius: "10px",
+              background: "#080a0d",
+              color: "#ff8d8d",
+              fontSize: "13px",
+              lineHeight: 1.5,
+              wordBreak: "break-word",
+            }}
+          >
+            {appError}
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: "20px",
+              width: "100%",
+              padding: "13px",
+              border: "none",
+              borderRadius: "8px",
+              background: "#fff",
+              color: "#000",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Reload PropLink
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading) {
     return (
@@ -407,59 +421,24 @@ function App() {
         style={{
           minHeight: "100vh",
           background: "#050505",
-          color: "white",
+          color: "#fff",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: "Arial, sans-serif",
-          gap: "12px",
         }}
       >
-        <div
-          style={{
-            fontSize: "28px",
-            fontWeight: "900",
-            letterSpacing: "-1px",
-          }}
-        >
-          Prop<span style={{ color: "#1877f2" }}>Link</span>
-        </div>
-
-        <div
-          style={{
-            color: "#777e89",
-            fontSize: "13px",
-          }}
-        >
-          Loading...
-        </div>
+        Loading PropLink...
       </div>
     );
   }
-
-  /*
-   * ============================
-   * AUTHENTICATION GATE
-   * ============================
-   *
-   * NO USER = NO HOME PAGE.
-   */
 
   if (!user) {
     return <Auth />;
   }
 
-  /*
-   * ============================
-   * PROPLINK HOME
-   * ============================
-   */
-
   return (
     <div className="app">
-
-      {/* NAVBAR */}
 
       <header className="navbar">
 
@@ -468,7 +447,6 @@ function App() {
         </div>
 
         <nav className="nav-links">
-
           <a href="#properties">
             Find a place
           </a>
@@ -480,7 +458,6 @@ function App() {
           <a href="#about">
             About
           </a>
-
         </nav>
 
         <div
@@ -490,7 +467,6 @@ function App() {
             gap: "10px",
           }}
         >
-
           <span
             style={{
               color: "#777e89",
@@ -517,17 +493,12 @@ function App() {
           >
             List Property
           </button>
-
         </div>
-
       </header>
-
-      {/* HERO */}
 
       <main>
 
         <section className="hero">
-
           <div className="hero-content">
 
             <div className="hero-badge">
@@ -549,7 +520,6 @@ function App() {
             <div className="search-panel">
 
               <div className="search-main">
-
                 <span>⌕</span>
 
                 <input
@@ -569,7 +539,6 @@ function App() {
                     }
                   }}
                 />
-
               </div>
 
               <select
@@ -578,7 +547,9 @@ function App() {
                   setLocation(event.target.value)
                 }
               >
-                <option>All locations</option>
+                <option>
+                  All locations
+                </option>
                 <option>Harare</option>
                 <option>Bulawayo</option>
                 <option>Gweru</option>
@@ -614,54 +585,34 @@ function App() {
             </div>
 
             <div className="hero-stats">
-
               <div>
                 <strong>
                   {properties.length}+
                 </strong>
-
-                <span>
-                  Properties
-                </span>
+                <span>Properties</span>
               </div>
 
               <div>
-                <strong>
-                  4+
-                </strong>
-
-                <span>
-                  Cities
-                </span>
+                <strong>4+</strong>
+                <span>Cities</span>
               </div>
 
               <div>
-                <strong>
-                  Direct
-                </strong>
-
-                <span>
-                  Connections
-                </span>
+                <strong>Direct</strong>
+                <span>Connections</span>
               </div>
-
             </div>
 
           </div>
-
         </section>
-
-        {/* PROPERTY MARKETPLACE */}
 
         <section
           className="properties-section"
           id="properties"
         >
-
           <div className="section-heading">
 
             <div>
-
               <span className="section-label">
                 EXPLORE
               </span>
@@ -674,7 +625,6 @@ function App() {
                 Browse properties from people and
                 businesses looking for tenants or buyers.
               </p>
-
             </div>
 
             <div className="results-count">
@@ -703,29 +653,12 @@ function App() {
               onChange={(event) =>
                 setListingType(event.target.value)
               }
-              style={{
-                padding: "11px 13px",
-                background: "#11151b",
-                border:
-                  "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "8px",
-                outline: "none",
-                color: "#b8bec8",
-                fontSize: "13px",
-              }}
             >
               <option>
                 All listings
               </option>
-
-              <option>
-                Rent
-              </option>
-
-              <option>
-                Sale
-              </option>
-
+              <option>Rent</option>
+              <option>Sale</option>
             </select>
 
             {(search ||
@@ -733,14 +666,12 @@ function App() {
               propertyType !== "All types" ||
               listingType !== "All listings" ||
               maxPrice) && (
-
               <button
                 className="clear-button"
                 onClick={resetFilters}
               >
                 Clear filters
               </button>
-
             )}
 
           </div>
@@ -748,18 +679,15 @@ function App() {
           <div className="property-grid">
 
             {filteredProperties.length > 0 ? (
-
               filteredProperties.map(
                 (property) => (
-
                   <article
                     className="property-card"
                     key={property.id}
                     onClick={() =>
-                      openProperty(property)
+                      setSelectedProperty(property)
                     }
                   >
-
                     <div className="property-image-wrapper">
 
                       <img
@@ -777,7 +705,6 @@ function App() {
                     <div className="property-info">
 
                       <div className="property-price">
-
                         $
                         {Number(
                           property.price
@@ -789,7 +716,6 @@ function App() {
                             ? "/month"
                             : ""}
                         </small>
-
                       </div>
 
                       <h3>
@@ -817,14 +743,10 @@ function App() {
                       </div>
 
                     </div>
-
                   </article>
-
                 )
               )
-
             ) : (
-
               <div className="empty-state">
 
                 <h3>
@@ -847,20 +769,15 @@ function App() {
                 </button>
 
               </div>
-
             )}
 
           </div>
-
         </section>
-
-        {/* HOW IT WORKS */}
 
         <section
           className="how-section"
           id="how-it-works"
         >
-
           <div className="section-heading centered">
 
             <span className="section-label">
@@ -880,7 +797,6 @@ function App() {
           <div className="steps">
 
             <div className="step">
-
               <div className="step-number">
                 01
               </div>
@@ -893,11 +809,9 @@ function App() {
                 Tell PropLink what kind of property
                 you're looking for.
               </p>
-
             </div>
 
             <div className="step">
-
               <div className="step-number">
                 02
               </div>
@@ -910,11 +824,9 @@ function App() {
                 Compare available properties,
                 locations and prices.
               </p>
-
             </div>
 
             <div className="step">
-
               <div className="step-number">
                 03
               </div>
@@ -927,14 +839,10 @@ function App() {
                 Contact the owner or property
                 representative directly.
               </p>
-
             </div>
 
           </div>
-
         </section>
-
-        {/* OWNER CTA */}
 
         <section className="owner-section">
 
@@ -967,7 +875,6 @@ function App() {
           <div className="owner-decoration">
 
             <div className="decoration-card">
-
               <span>
                 New listing
               </span>
@@ -979,20 +886,16 @@ function App() {
               <small>
                 Harare • $750/month
               </small>
-
             </div>
 
           </div>
 
         </section>
 
-        {/* ABOUT */}
-
         <section
           className="about-section"
           id="about"
         >
-
           <div>
 
             <span className="section-label">
@@ -1014,12 +917,9 @@ function App() {
             properties and connect directly with the
             people offering them.
           </p>
-
         </section>
 
       </main>
-
-      {/* FOOTER */}
 
       <footer>
 
@@ -1049,15 +949,13 @@ function App() {
 
       </footer>
 
-      {/* PROPERTY DETAILS MODAL */}
-
       {selectedProperty && (
-
         <div
           className="modal-overlay"
-          onClick={closeProperty}
+          onClick={() =>
+            setSelectedProperty(null)
+          }
         >
-
           <div
             className="property-modal"
             onClick={(event) =>
@@ -1067,7 +965,9 @@ function App() {
 
             <button
               className="modal-close"
-              onClick={closeProperty}
+              onClick={() =>
+                setSelectedProperty(null)
+              }
             >
               ×
             </button>
@@ -1092,7 +992,6 @@ function App() {
               </p>
 
               <div className="modal-price">
-
                 $
                 {Number(
                   selectedProperty.price
@@ -1104,7 +1003,6 @@ function App() {
                     ? "/month"
                     : ""}
                 </small>
-
               </div>
 
               <div className="modal-info">
@@ -1138,22 +1036,16 @@ function App() {
             </div>
 
           </div>
-
         </div>
-
       )}
 
-      {/* CONTACT OWNER MODAL */}
-
       {contactProperty && (
-
         <div
           className="modal-overlay"
           onClick={() =>
             setContactProperty(null)
           }
         >
-
           <div
             className="listing-modal"
             onClick={(event) =>
@@ -1181,11 +1073,9 @@ function App() {
             <p>
               You're interested in:
               <br />
-
               <strong>
                 {contactProperty.title}
               </strong>
-
             </p>
 
             <input
@@ -1219,35 +1109,27 @@ function App() {
             <button
               className="primary-button full"
               onClick={() => {
-
                 alert(
                   "Message ready. Direct owner messaging will be connected to the PropLink backend."
                 );
 
                 setContactProperty(null);
-
               }}
             >
               Send Message
             </button>
 
           </div>
-
         </div>
-
       )}
 
-      {/* LIST PROPERTY MODAL */}
-
       {showListing && (
-
         <div
           className="modal-overlay"
           onClick={() =>
             setShowListing(false)
           }
         >
-
           <div
             className="listing-modal"
             onClick={(event) =>
@@ -1309,7 +1191,6 @@ function App() {
                 value={listingForm.listingType}
                 onChange={handleListingChange}
               >
-
                 <option value="Rent">
                   For Rent
                 </option>
@@ -1317,7 +1198,6 @@ function App() {
                 <option value="Sale">
                   For Sale
                 </option>
-
               </select>
 
               <select
@@ -1325,7 +1205,6 @@ function App() {
                 value={listingForm.type}
                 onChange={handleListingChange}
               >
-
                 <option value="House">
                   House
                 </option>
@@ -1341,7 +1220,6 @@ function App() {
                 <option value="Commercial">
                   Commercial
                 </option>
-
               </select>
 
               <select
@@ -1349,7 +1227,6 @@ function App() {
                 value={listingForm.bedrooms}
                 onChange={handleListingChange}
               >
-
                 <option value="1">
                   1 Bedroom
                 </option>
@@ -1369,7 +1246,6 @@ function App() {
                 <option value="5">
                   5+ Bedrooms
                 </option>
-
               </select>
 
               <button
@@ -1382,9 +1258,7 @@ function App() {
             </form>
 
           </div>
-
         </div>
-
       )}
 
     </div>
