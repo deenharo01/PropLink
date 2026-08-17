@@ -1,22 +1,27 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.jsx";
-const rootElement = document.getElementById("root");
-if (!rootElement) {
-  document.body.innerHTML = `
+const root = document.getElementById("root");
+if (root) {
+  root.innerHTML = `
     <div style="
-      padding: 40px;
+      padding: 30px;
       font-family: Arial, sans-serif;
-      color: red;
+      color: black;
       background: white;
+      text-align: center;
     ">
-      <h1>PropLink Error</h1>
-      <p>React could not find the root element.</p>
-      <p>Check your index.html file.</p>
+      <h1>PropLink JavaScript is working</h1>
+      <p>The React entry point loaded successfully.</p>
     </div>
   `;
 } else {
-  createRoot(rootElement).render(
-    <App />
-  );
+  document.body.innerHTML = `
+    <div style="
+      padding: 30px;
+      font-family: Arial, sans-serif;
+      color: red;
+    ">
+      <h1>Root element not found</h1>
+    </div>
+  `;
 }
