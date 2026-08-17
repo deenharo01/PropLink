@@ -5,6 +5,7 @@ function Auth({ onClose }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -18,13 +19,18 @@ function Auth({ onClose }) {
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
       });
 
       if (error) {
         setMessage(error.message);
       } else {
         setMessage(
-          "Account created. Check your email if confirmation is required."
+          "Account created. Check your email to confirm your account."
         );
       }
     } else {
@@ -36,8 +42,7 @@ function Auth({ onClose }) {
       if (error) {
         setMessage(error.message);
       } else {
-        setMessage("Signed in successfully.");
-        onClose?.();
+        onClose();
       }
     }
 
@@ -45,7 +50,7 @@ function Auth({ onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         className="listing-modal"
         onClick={(event) => event.stopPropagation()}
@@ -75,6 +80,18 @@ function Auth({ onClose }) {
         </p>
 
         <form onSubmit={handleSubmit}>
+          {mode === "signup" && (
+            <input
+              type="text"
+              placeholder="Full name"
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
+              required
+            />
+          )}
+
           <input
             type="email"
             placeholder="Email address"
@@ -99,7 +116,7 @@ function Auth({ onClose }) {
           {message && (
             <p
               style={{
-                color: "#7da9ff",
+                color: "#7faeff",
                 marginBottom: "15px",
               }}
             >
@@ -122,24 +139,22 @@ function Auth({ onClose }) {
 
         <button
           type="button"
-          onClick={() =>
+          className="clear-button"
+          style={{
+            marginTop: "18px",
+            width: "100%",
+          }}
+          onClick={() => {
             setMode(
               mode === "login"
                 ? "signup"
                 : "login"
-            )
-          }
-          style={{
-            width: "100%",
-            marginTop: "15px",
-            border: "none",
-            background: "transparent",
-            color: "#5794ff",
-            fontSize: "13px",
+            );
+            setMessage("");
           }}
         >
           {mode === "login"
-            ? "Don't have an account? Create one"
+            ? "Don't have an account? Sign up"
             : "Already have an account? Sign in"}
         </button>
       </div>
